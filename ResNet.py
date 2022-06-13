@@ -175,10 +175,10 @@ class Var_Encoder(nn.Module):
 ###############################################################
 class Encoder(nn.Module):
 
-    def __init__(self, block, layers, num_classes=23):
+    def __init__(self, block, layers, num_classes=23, num_input_channels=3):
         self.inplanes = 64
         super (Encoder, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
+        self.conv1 = nn.Conv2d(num_input_channels, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
@@ -331,6 +331,7 @@ class Decoder(nn.Module):
 class Autoencoder(nn.Module):
   def __init__(self,encoder):
     super(Autoencoder,self).__init__()
+    self.name = 'none VAR'
     self.encoder = encoder
     self.binary = Binary()
     self.decoder = Decoder()
@@ -352,6 +353,7 @@ class Autoencoder(nn.Module):
 class Var_Autoencoder(nn.Module):
   def __init__(self,encoder):
     super(Var_Autoencoder,self).__init__()
+    self.name = 'VAR'
     self.encoder = encoder#.cpu()
     self.binary = Binary()
     self.decoder = Decoder()#.cpu()

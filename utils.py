@@ -1,5 +1,5 @@
 from Dataset import CarlaDataset
-from ResNet import Encoder, Binary, Decoder, Autoencoder, Bottleneck
+from ResNet import Encoder, Binary, Decoder, Autoencoder, Bottleneck, Var_Autoencoder, Var_Encoder
 
 import numpy as np
 import csv
@@ -61,11 +61,20 @@ loader.add_implicit_resolver(
     |\\.(?:nan|NaN|NAN))$''', re.X),
     list(u'-+0123456789.'))
 
-def get_dataloaders(train_set, val_set_one, val_set_two, batch_s):
+def get_dataloaders(model_version,train_set, val_set_one, val_set_two, batch_s):
 
-  dataset_train = CarlaDataset(train_set, 'pred_depth/', 'opt_flow/')
-  dataset_val = CarlaDataset(val_set_one, 'pred_depth/', 'opt_flow/')
-  dataset_val_two = CarlaDataset(val_set_two, 'pred_depth/', 'opt_flow/')
+  if model_version == 'DEPTH' or model_version == 'VAR':
+
+    dataset_train = CarlaDataset(train_set, 'pred_depth/', 'opt_flow/')
+    dataset_val = CarlaDataset(val_set_one, 'pred_depth/', 'opt_flow/')
+    dataset_val_two = CarlaDataset(val_set_two, 'pred_depth/', 'opt_flow/')
+
+  elif model_version == 'RGB':
+
+    dataset_train = CarlaDataset(train_set, 'rgb/', 'opt_flow/')
+    dataset_val = CarlaDataset(val_set_one, 'rgb/', 'opt_flow/')
+    dataset_val_two = CarlaDataset(val_set_two, 'rgb/', 'opt_flow/')
+
 
   import torchvision.transforms as transforms
   from torch.utils.data import DataLoader
@@ -90,24 +99,51 @@ def get_dataloaders(train_set, val_set_one, val_set_two, batch_s):
 
   return train_dataloader, valid_dataloader, valid_dataloader_two
 
-def create_model(configs, device):
+def create_model(configs, device,num_input_channels=1):
 
-  encoder = Encoder(Bottleneck, [3, 4, 6, 3]).to(device)
-  encoder.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False).to(device)
-  encoder.fc = nn.Linear(65536, configs['zsize']).to(device)
-  encoder=encoder.to(device)
 
-  #binary = Binary()
+  if configs['Name'] == 'DEPTH' or configs['Name'] == 'RGB':
 
-  decoder = Decoder().to(device)
+    encoder = Encoder(Bottleneck, [3, 4, 6, 3],num_input_channels).to(device)
+    encoder.conv1 = nn.Conv2d(num_input_channels, 64, kernel_size=7, stride=2, padding=3, bias=False).to(device)
+    encoder.fc = nn.Linear(65536, configs['zsize']).to(device)
+    encoder=encoder.to(device)
 
-  autoencoder = Autoencoder(encoder).to(device)
+    #binary = Binary()
 
-  from torchsummary import summary
+    decoder = Decoder().to(device)
 
-  print(summary(autoencoder,(1,192,640)))
+    autoencoder = Autoencoder(encoder).to(device)
 
-  return autoencoder
+    from torchsummary import summary
+
+    print(summary(autoencoder,(num_input_channels,192,640)))
+
+    return autoencoder
+
+  elif configs['Name'] == 'VAR':
+
+    encoder = Var_Encoder(Bottleneck, [3, 4, 6, 3],num_input_channels).to(device)
+    encoder.conv1 = nn.Conv2d(num_input_channels, 64, kernel_size=7, stride=2, padding=3, bias=False).to(device)
+    #encoder.fc = nn.Linear(65536, configs['zsize']).to(device)
+    encoder.fc_mu = nn.Linear(65536, configs['zsize']).to(device)
+    encoder.fc_logvar = nn.Linear(65536, configs['zsize']).to(device)
+    encoder.fc_logvar.weight.data.normal_(-0.0001, 0.0001)
+    encoder=encoder.to(device)
+
+    #binary = Binary()
+
+    decoder = Decoder().to(device)
+
+    autoencoder = Var_Autoencoder(encoder).to(device)
+
+    from torchsummary import summary
+
+    print(summary(autoencoder,(num_input_channels,192,640)))
+
+    return autoencoder
+
+
 
 def create_output_images(output_dir, model, dataloader, device):
   model.eval()
@@ -131,17 +167,17 @@ def create_output_images(output_dir, model, dataloader, device):
       output.save(output_dir + "/frame_" + str(i) + ".png")
 
 def store_model(model_version, model, loss_values, configs,epoch):
-  if model_version == 'Same':
+  if 'Same' in model_version:
     if loss_values['val_loss_avg'][-1] < loss_values['best_valid_loss_one']:
       loss_values['best_valid_loss_one'] = loss_values['val_loss_avg'][-1]
-      torch.save(model.state_dict(),'ResNet18_Same_Dataset.pt')
+      torch.save(model.state_dict(),'ResNet18_'+ model_version + '_Dataset.pt')
       loss_values['best_epoch_same'] = epoch
-  elif model_version == 'Other':
+  elif 'Other' in model_version:
     if loss_values['val_loss_avg_two'][-1] < loss_values['best_valid_loss_two']:
       loss_values['best_valid_loss_two'] = loss_values['val_loss_avg_two'][-1]
-      torch.save(model.state_dict(),'ResNet18_Other_Dataset.pt')
+      torch.save(model.state_dict(),'ResNet18_'+ model_version + '_Dataset.pt')
       loss_values['best_epoch_other'] = epoch
-  elif model_version == 'Final':
-    torch.save(model.state_dict(),'ResNet18_' + str(configs['num_epochs']) + 'E_Dataset.pt')
+  elif 'Final' in model_version:
+    torch.save(model.state_dict(),'ResNet18_' + model_version + '_' + str(configs['num_epochs']) + 'E_Dataset.pt')
   else:
     print('model ' + model_version + ' unknown!')

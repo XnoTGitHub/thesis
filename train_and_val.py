@@ -3,6 +3,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
+from ResNet import vae_loss
+
+variational_beta = 1_000
+
 
 def train(train_dataloader, model, optimizer, device):
   num_batches = 0
@@ -16,12 +20,22 @@ def train(train_dataloader, model, optimizer, device):
 
     images = images.float()
     segmentations = segmentations.float()
+
+    print(images.shape)
     
-    # autoencoder reconstruction
-    images_recon = model(images)
+    if model.name == 'VAR':
+      # autoencoder reconstruction
+      images_recon, latent_mu, latent_logvar = model(images)
+
+      # reconstruction error
+      loss = vae_loss(images_recon, segmentations, latent_mu, latent_logvar, variational_beta)
+
+    else:
+      # autoencoder reconstruction
+      images_recon = model(images)
     
-    # reconstruction error
-    loss = F.mse_loss(images_recon, segmentations)
+      # reconstruction error
+      loss = F.mse_loss(images_recon, segmentations)
     
     # backpropagation
     optimizer.zero_grad()

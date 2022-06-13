@@ -23,7 +23,10 @@ def log_header(configs, model):
     myfile.write('VAL_SET ' + configs['VAL_SET'] + '\n')
     myfile.write('VAL_SET_TWO ' + configs['VAL_SET_TWO'] + '\n')
     myfile.write('Date ' + str(datetime.now()) + '\n')
-    myfile.write(str(summary(model,(1,192,640))))
+    if configs['Name'] == 'DEPTH':
+      myfile.write(str(summary(model,(1,192,640))))
+    elif configs['Name'] == 'RGB':
+      myfile.write(str(summary(model,(3,192,640))))
     myfile.write('\n')
     myfile.write('Train...\n')
 

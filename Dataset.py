@@ -5,7 +5,7 @@ import pandas as pd
 
 class CarlaDataset(Dataset):
     def __init__(self, annotations_file, rgb_dir, seg_dir):
-        self.img_labels = pd.read_csv(annotations_file)
+        self.img_labels = pd.read_csv('thesis/' + annotations_file)
         self.rgb_dir = rgb_dir
         self.seg_dir = seg_dir
         #self.count = 0
@@ -19,7 +19,7 @@ class CarlaDataset(Dataset):
         #print(image_dir_suff)
         if self.rgb_dir in image_dir_suff:
 
-          rgb_image = read_image(image_dir_suff)/255.
+          rgb_image = read_image('thesis/' + image_dir_suff)/255.
           #print(rgb_image.shape)
 
           index = image_dir_suff.find(self.rgb_dir)
@@ -31,7 +31,26 @@ class CarlaDataset(Dataset):
             #print(self.count)
             #self.cound += 1
 
-            seg_image = read_image(seg_im_path)/255.
+            seg_image = read_image('thesis/' + seg_im_path)/255.
+
+          else:
+            print('ERROR, Label image not found: ',image_dir_suff)
+
+        elif 'rgb/' in image_dir_suff:
+
+          rgb_image = read_image('thesis/' + 'rgb/')/255.
+          #print(rgb_image.shape)
+
+          index = image_dir_suff.find('rgb/')
+          if index != -1:
+            pref = image_dir_suff[:index]
+            suff = image_dir_suff[index + len(self.rgb_dir):]
+            seg_im_path = pref + self.seg_dir + suff
+            #print(seg_im_path)
+            #print(self.count)
+            #self.cound += 1
+
+            seg_image = read_image('thesis/' + seg_im_path)/255.
 
           else:
             print('ERROR, Label image not found: ',image_dir_suff)

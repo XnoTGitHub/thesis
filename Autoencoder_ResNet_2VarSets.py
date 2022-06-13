@@ -32,14 +32,17 @@ with open(args.config) as f:
 ###################
 #### DataLoaer ####
 
-train_dataloader, valid_dataloader, valid_dataloader_two = get_dataloaders(configs['TRAIN_SET'], configs['VAL_SET'], configs['VAL_SET_TWO'], configs['batch_size'])
+train_dataloader, valid_dataloader, valid_dataloader_two = get_dataloaders(configs['Name'], configs['TRAIN_SET'], configs['VAL_SET'], configs['VAL_SET_TWO'], configs['batch_size'])
 
 ################
 #### Model #####
 
 device = torch.device("cuda:0" if (torch.cuda.is_available() and configs['use_gpu']) else "cpu")
 
-autoencoder = create_model(configs, device)
+if configs['Name'] == 'DEPTH' or configs['Name'] == 'VAR':
+  autoencoder = create_model(configs, device)########sollte hier num_input_channels gleich 1 sein??!
+elif configs['Name'] == 'RGB':
+  autoencoder = create_model(configs, device, num_input_channels=3)
 
 num_params = sum(p.numel() for p in autoencoder.parameters() if p.requires_grad)
 print('Number of parameters: %d' % num_params)
@@ -67,15 +70,15 @@ if (TRAIN):
       ### First Validation ###
 
       loss_values['val_loss_avg'][-1] = validate(valid_dataloader, autoencoder, optimizer, device)
-      store_model('Same',autoencoder, loss_values, configs, epoch)
+      store_model('Same_' + configs['Name'],autoencoder, loss_values, configs, epoch)
 
       ### Second Validation ###
 
       loss_values['val_loss_avg_two'][-1] = validate(valid_dataloader_two, autoencoder, optimizer, device)
-      store_model('Other',autoencoder, loss_values, configs, epoch)
+      store_model('Other_' + configs['Name'],autoencoder, loss_values, configs, epoch)
 
       log_epoch(configs, loss_values['train_loss_avg'][-1], loss_values['val_loss_avg'][-1], loss_values['val_loss_avg_two'][-1], epoch)
-  store_model('Final', autoencoder, loss_values, configs, epoch)
+      store_model('Final_'+ configs['Name'], autoencoder, loss_values, configs, epoch)
   notifyTrainFinish('DEPTH to OPT_FLOW autoencoder')
 else:
   autoencoder.load_state_dict(torch.load('ResNet18_' + str(configs['num_epochs']) + 'E_Dataset.pt'))

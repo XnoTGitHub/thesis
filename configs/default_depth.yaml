@@ -1,6 +1,6 @@
 latent_dims: 64
-num_epochs: 1
-batch_size: 100
+num_epochs: 50
+batch_size: 64
 capacity: 64
 learning_rate: 1e-3
 weight_decay: 1e-5
@@ -8,10 +8,12 @@ zsize: 64
 
 use_gpu: True
 
-TRAIN_SET: 'sets/Large_Var_Hight.csv'
-VAL_SET: 'sets/Small_Var_Hight.csv'
-VAL_SET_TWO: 'sets/7_Var_Hight.csv'
+TRAIN_SET: 'sets/Large_No_Traficlights.csv'
+VAL_SET: 'sets/Small_No_Traficlights.csv'
+VAL_SET_TWO: 'sets/7_No_Traficlights.csv'
 
-log_file: 'test_terminal_output.txt'
+log_file: 'terminal_output.txt'
+
+Name: 'DEPTH'
 
 TRAIN: True
