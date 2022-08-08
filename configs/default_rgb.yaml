@@ -1,0 +1,21 @@
+latent_dims: 64
+num_epochs: 50
+batch_size: 64
+capacity: 64
+learning_rate: 1e-3
+weight_decay: 1e-5
+zsize: 64
+
+use_gpu: True
+
+TRAIN_SET: 'sets/Large_No_Traficlights_RGB.csv'
+VAL_SET: 'sets/Small_No_Traficlights_RGB.csv'
+VAL_SET_TWO: 'sets/7_No_Traficlights_RGB.csv'
+
+log_file: 'terminal_output_rgb.txt'
+
+Name: 'RGB'
+
+TRAIN: True
+
+is_depth: False

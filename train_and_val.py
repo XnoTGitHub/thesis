@@ -21,7 +21,7 @@ def train(train_dataloader, model, optimizer, device):
     images = images.float()
     segmentations = segmentations.float()
 
-    print(images.shape)
+    #print('images.shape: ',images.shape)
     
     if model.name == 'VAR':
       # autoencoder reconstruction
@@ -30,9 +30,14 @@ def train(train_dataloader, model, optimizer, device):
       # reconstruction error
       loss = vae_loss(images_recon, segmentations, latent_mu, latent_logvar, variational_beta)
 
+    #elif model.name = "DIRECT":
+    #  images_recon = model(images)
+
     else:
       # autoencoder reconstruction
       images_recon = model(images)
+      #print(images_recon.shape)
+      #print(segmentations.shape)
     
       # reconstruction error
       loss = F.mse_loss(images_recon, segmentations)
@@ -61,10 +66,17 @@ def validate(valid_dataloader, model, optimizer, device):
       images = images.float()
       segmentations = segmentations.float()
 
-      image_batch_recon = model(images)
+      if model.name == 'VAR':
+        # autoencoder reconstruction
+        images_recon, latent_mu, latent_logvar = model(images)
 
-      # reconstruction error
-      loss_val = F.mse_loss(image_batch_recon, segmentations)
+        # reconstruction error
+        loss_val = vae_loss(images_recon, segmentations, latent_mu, latent_logvar, variational_beta)
+      else:
+        image_batch_recon = model(images)
+
+        # reconstruction error
+        loss_val = F.mse_loss(image_batch_recon, segmentations)
 
       val_loss_avg += loss_val.item()
       num_test_batches += 1

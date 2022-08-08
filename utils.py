@@ -1,5 +1,5 @@
 from Dataset import CarlaDataset
-from ResNet import Encoder, Binary, Decoder, Autoencoder, Bottleneck, Var_Autoencoder, Var_Encoder
+from ResNet import Encoder, Binary, Decoder, Autoencoder, Bottleneck, Var_Autoencoder, Var_Encoder, DirectEncoder
 
 import numpy as np
 import csv
@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
+import os
 
 import yaml
 import re
@@ -63,7 +64,7 @@ loader.add_implicit_resolver(
 
 def get_dataloaders(model_version,train_set, val_set_one, val_set_two, batch_s):
 
-  if model_version == 'DEPTH' or model_version == 'VAR':
+  if 'DEPTH' in model_version or 'VAR' in model_version:
 
     dataset_train = CarlaDataset(train_set, 'pred_depth/', 'opt_flow/')
     dataset_val = CarlaDataset(val_set_one, 'pred_depth/', 'opt_flow/')
@@ -74,6 +75,12 @@ def get_dataloaders(model_version,train_set, val_set_one, val_set_two, batch_s):
     dataset_train = CarlaDataset(train_set, 'rgb/', 'opt_flow/')
     dataset_val = CarlaDataset(val_set_one, 'rgb/', 'opt_flow/')
     dataset_val_two = CarlaDataset(val_set_two, 'rgb/', 'opt_flow/')
+
+  elif 'DIRECT' in model_version:
+
+    dataset_train = CarlaDataset(train_set, 'pred_depth/', 'direct')
+    dataset_val = CarlaDataset(val_set_one, 'pred_depth/', 'direct')
+    dataset_val_two = CarlaDataset(val_set_two, 'pred_depth/', 'direct')
 
 
   import torchvision.transforms as transforms
@@ -102,7 +109,7 @@ def get_dataloaders(model_version,train_set, val_set_one, val_set_two, batch_s):
 def create_model(configs, device,num_input_channels=1):
 
 
-  if configs['Name'] == 'DEPTH' or configs['Name'] == 'RGB':
+  if 'DEPTH' in configs['Name'] or 'RGB' in configs['Name']:
 
     encoder = Encoder(Bottleneck, [3, 4, 6, 3],num_input_channels).to(device)
     encoder.conv1 = nn.Conv2d(num_input_channels, 64, kernel_size=7, stride=2, padding=3, bias=False).to(device)
@@ -128,7 +135,7 @@ def create_model(configs, device,num_input_channels=1):
     #encoder.fc = nn.Linear(65536, configs['zsize']).to(device)
     encoder.fc_mu = nn.Linear(65536, configs['zsize']).to(device)
     encoder.fc_logvar = nn.Linear(65536, configs['zsize']).to(device)
-    encoder.fc_logvar.weight.data.normal_(-0.0001, 0.0001)
+    encoder.fc_logvar.weight.data.normal_(-0.001, 0.001)
     encoder=encoder.to(device)
 
     #binary = Binary()
@@ -142,15 +149,40 @@ def create_model(configs, device,num_input_channels=1):
     print(summary(autoencoder,(num_input_channels,192,640)))
 
     return autoencoder
+  elif 'DIRECT' in configs['Name']:
+    print('DIRECT_________')
+    if 'rgb' in configs['Name']:
+      num_input_channels = 3
+      print('RGB_DIRECT_________')
+    encoder = Encoder(Bottleneck, [3, 4, 6, 3],num_input_channels).to(device)
+    encoder.conv1 = nn.Conv2d(num_input_channels, 64, kernel_size=7, stride=2, padding=3, bias=False).to(device)
+    encoder.fc = nn.Linear(65536, configs['zsize']).to(device)
+    encoder=encoder.to(device)
+
+    #binary = Binary()
+
+    decoder = Decoder().to(device)
+
+    #direct_encoder = DirectEncoder(encoder).to(device)
+    direct_encoder = Autoencoder(encoder).encoder.to(device)
+
+    #from torchsummary import summary
+    from torchinfo import summary
+    print(type(direct_encoder))
+    print(summary(direct_encoder,(1,num_input_channels,192,640)))
+
+    return direct_encoder
 
 
-
-def create_output_images(output_dir, model, dataloader, device):
+def create_output_images(output_dir, model, dataloader, device, configs):
   model.eval()
   images_original, optical_flow = iter(dataloader).next()
   with torch.no_grad():
     print(images_original.shape)
-    images = model(images_original.to(device))
+    if configs['Name'] == 'VAR':
+      images, latent_mu, latent_logvar = model(images_original.to(device))
+    else:
+      images = model(images_original.to(device))
     images = images.cpu()
     print(images.shape)
     for i in range(0,images.shape[0]):
@@ -181,3 +213,18 @@ def store_model(model_version, model, loss_values, configs,epoch):
     torch.save(model.state_dict(),'ResNet18_' + model_version + '_' + str(configs['num_epochs']) + 'E_Dataset.pt')
   else:
     print('model ' + model_version + ' unknown!')
+
+def create_dirs(dir_one, dir_two, dir_three):
+
+  top_directory = dir_one.split('/')[0]
+
+  print('thesis/' + top_directory)
+
+  if not os.path.exists('thesis/' + top_directory):
+    os.makedirs('thesis/' + top_directory)
+  if not os.path.exists('thesis/' + dir_one):
+    os.makedirs('thesis/' + dir_one)
+  if not os.path.exists('thesis/' + dir_two):
+    os.makedirs('thesis/' + dir_two)
+  if not os.path.exists('thesis/' + dir_three):
+    os.makedirs('thesis/' + dir_three)

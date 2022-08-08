@@ -15,6 +15,8 @@ import re
 
 from Dataset import CarlaDataset
 from ResNet import Encoder, Binary, Decoder, Autoencoder, Bottleneck
+from Action_Predicter_Models import Action_Predicter_Dense
+from Direct_Network import Direct_Network
 
 from utils import *
 from my_logging import *
@@ -22,7 +24,7 @@ from train_and_val import *
 
 loss_values = get_loss_values()
 
-parser = argparse.ArgumentParser(description="Autoencoder")
+parser = argparse.ArgumentParser(description="Direct")
 parser.add_argument("--config", help="YAML config file")
 args = parser.parse_args()
 
@@ -39,11 +41,12 @@ train_dataloader, valid_dataloader, valid_dataloader_two = get_dataloaders(confi
 
 device = torch.device("cuda:0" if (torch.cuda.is_available() and configs['use_gpu']) else "cpu")
 
-if configs['Name'] == 'DEPTH' or configs['Name'] == 'VAR':
-  autoencoder = create_model(configs, device)########sollte hier num_input_channels gleich 1 sein??!
-elif configs['Name'] == 'RGB':
-  autoencoder = create_model(configs, device, num_input_channels=3)
-
+#if configs['Name'] == 'DEPTH' or configs['Name'] == 'VAR' or configs['Name'] == 'DIRECT':
+#  autoencoder = create_model(configs, device)########sollte hier num_input_channels gleich 1 sein??!
+#elif configs['Name'] == 'RGB':
+#  autoencoder = create_model(configs, device, num_input_channels=3)
+#print(configs['Name'])
+autoencoder = Direct_Network(configs, device).to(device)
 num_params = sum(p.numel() for p in autoencoder.parameters() if p.requires_grad)
 print('Number of parameters: %d' % num_params)
 
@@ -79,7 +82,7 @@ if (TRAIN):
 
       log_epoch(configs, loss_values['train_loss_avg'][-1], loss_values['val_loss_avg'][-1], loss_values['val_loss_avg_two'][-1], epoch)
       store_model('Final_'+ configs['Name'], autoencoder, loss_values, configs, epoch)
-  notifyTrainFinish('DEPTH to OPT_FLOW autoencoder')
+  notifyTrainFinish('Direct_Network')
 else:
   #if configs['Name'] == 'VAR':
   autoencoder.load_state_dict(torch.load('ResNet18_Final_' + configs['Name'] + '_' + str(configs['num_epochs']) + 'E_Dataset.pt'))

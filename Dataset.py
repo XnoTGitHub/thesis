@@ -1,5 +1,6 @@
 from torch.utils.data import Dataset
 from torchvision.io import read_image
+import torch
 
 import pandas as pd
 
@@ -17,7 +18,14 @@ class CarlaDataset(Dataset):
         image_dir_suff = self.img_labels.iloc[idx, 0]
         #image_dir_suff = '../../shared/datasets/floriann/' + image_dir_suff
         #print(image_dir_suff)
-        if self.rgb_dir in image_dir_suff:
+        if self.seg_dir == 'direct':
+          rgb_image = read_image('thesis/' + image_dir_suff)/255.
+          steer = self.img_labels.iloc[idx, 1]
+          throttle = self.img_labels.iloc[idx, 2]
+          labels = torch.Tensor((steer,throttle)).float()#.to(device)
+          seg_image = labels#(steer,throttle)
+
+        elif self.rgb_dir in image_dir_suff:
 
           rgb_image = read_image('thesis/' + image_dir_suff)/255.
           #print(rgb_image.shape)
@@ -54,6 +62,7 @@ class CarlaDataset(Dataset):
 
           else:
             print('ERROR, Label image not found: ',image_dir_suff)
+
         else:
           print('ERROR, Input image not found: ',image_dir_suff)
         return rgb_image, seg_image
