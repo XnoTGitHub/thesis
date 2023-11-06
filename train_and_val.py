@@ -25,7 +25,15 @@ def train(train_dataloader, model, optimizer, device):
     
     if model.name == 'VAR':
       # autoencoder reconstruction
+      print("image")
+      print(images[0][0][0])
+      assert (images >= 0).all() and (images <= 1).all() and not torch.isnan(images).any(), "images has values out of range!"
+      print("images.shape: ", images.shape)
       images_recon, latent_mu, latent_logvar = model(images)
+
+      print("recon_image")
+      print(images_recon[0][0][0])
+      assert (images_recon >= 0).all() and (images_recon <= 1).all() and not torch.isnan(images_recon).any(), "images_recon has values out of range!"
 
       # reconstruction error
       loss = vae_loss(images_recon, segmentations, latent_mu, latent_logvar, variational_beta)
@@ -34,6 +42,8 @@ def train(train_dataloader, model, optimizer, device):
     #  images_recon = model(images)
 
     else:
+      print("images.shape")
+      print(images.shape)
       # autoencoder reconstruction
       images_recon = model(images)
       #print(images_recon.shape)
@@ -67,11 +77,21 @@ def validate(valid_dataloader, model, optimizer, device):
       segmentations = segmentations.float()
 
       if model.name == 'VAR':
+        print("image")
+        print(images[0][0][0])
+        assert (images >= 0).all() and (images <= 1).all() and not torch.isnan(images).any(), "val images has values out of range or NaN values!"
+
         # autoencoder reconstruction
         images_recon, latent_mu, latent_logvar = model(images)
+        print("recon_image")
+        print(images_recon[0][0][0])
+        assert (images_recon >= 0).all() and (images_recon <= 1).all() and not torch.isnan(images_recon).any(), "val images_recon has values out of range or NaN values!"
+
 
         # reconstruction error
         loss_val = vae_loss(images_recon, segmentations, latent_mu, latent_logvar, variational_beta)
+
+
       else:
         image_batch_recon = model(images)
 

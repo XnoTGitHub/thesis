@@ -66,15 +66,21 @@ def get_dataloaders(model_version,train_set, val_set_one, val_set_two, batch_s):
 
   if 'DEPTH' in model_version or 'VAR' in model_version:
 
-    dataset_train = CarlaDataset(train_set, 'pred_depth/', 'opt_flow/')
-    dataset_val = CarlaDataset(val_set_one, 'pred_depth/', 'opt_flow/')
-    dataset_val_two = CarlaDataset(val_set_two, 'pred_depth/', 'opt_flow/')
+    dataset_train = CarlaDataset(train_set, 'pred_depth/', 'ofl/')
+    dataset_val = CarlaDataset(val_set_one, 'pred_depth/', 'ofl/')
+    dataset_val_two = CarlaDataset(val_set_two, 'pred_depth/', 'ofl/')
 
   elif model_version == 'RGB':
 
-    dataset_train = CarlaDataset(train_set, 'rgb/', 'opt_flow/')
-    dataset_val = CarlaDataset(val_set_one, 'rgb/', 'opt_flow/')
-    dataset_val_two = CarlaDataset(val_set_two, 'rgb/', 'opt_flow/')
+    dataset_train = CarlaDataset(train_set, 'rgb/', 'ofl/')
+    dataset_val = CarlaDataset(val_set_one, 'rgb/', 'ofl/')
+    dataset_val_two = CarlaDataset(val_set_two, 'rgb/', 'ofl/')
+
+  elif 'DIRECT_rgb' in model_version:
+
+    dataset_train = CarlaDataset(train_set, 'rgb/', 'direct')
+    dataset_val = CarlaDataset(val_set_one, 'rgb/', 'direct')
+    dataset_val_two = CarlaDataset(val_set_two, 'rgb/', 'direct')
 
   elif 'DIRECT' in model_version:
 
@@ -122,9 +128,9 @@ def create_model(configs, device,num_input_channels=1):
 
     autoencoder = Autoencoder(encoder).to(device)
 
-    from torchsummary import summary
+    #from torchsummary import summary
 
-    print(summary(autoencoder,(num_input_channels,192,640)))
+    #print(summary(autoencoder,(num_input_channels,192,640)))
 
     return autoencoder
 
@@ -151,6 +157,7 @@ def create_model(configs, device,num_input_channels=1):
     return autoencoder
   elif 'DIRECT' in configs['Name']:
     print('DIRECT_________')
+    num_input_channels = 3
     if 'rgb' in configs['Name']:
       num_input_channels = 3
       print('RGB_DIRECT_________')
@@ -176,7 +183,8 @@ def create_model(configs, device,num_input_channels=1):
 
 def create_output_images(output_dir, model, dataloader, device, configs):
   model.eval()
-  images_original, optical_flow = iter(dataloader).next()
+  data_iter = iter(dataloader)
+  images_original, optical_flow = next(data_iter)
   with torch.no_grad():
     print(images_original.shape)
     if configs['Name'] == 'VAR':
@@ -198,19 +206,21 @@ def create_output_images(output_dir, model, dataloader, device, configs):
       output = transforms.ToPILImage()(output_tensor).convert("RGB")
       output.save(output_dir + "/frame_" + str(i) + ".png")
 
-def store_model(model_version, model, loss_values, configs,epoch):
+def store_model(model_version, model, loss_values, configs,epoch, output_dir):
   if 'Same' in model_version:
     if loss_values['val_loss_avg'][-1] < loss_values['best_valid_loss_one']:
       loss_values['best_valid_loss_one'] = loss_values['val_loss_avg'][-1]
-      torch.save(model.state_dict(),'ResNet18_'+ model_version + '_Dataset.pt')
+      torch.save(model.state_dict(), output_dir + 'ResNet18_'+ model_version + '_Dataset.pt')
       loss_values['best_epoch_same'] = epoch
   elif 'Other' in model_version:
     if loss_values['val_loss_avg_two'][-1] < loss_values['best_valid_loss_two']:
       loss_values['best_valid_loss_two'] = loss_values['val_loss_avg_two'][-1]
-      torch.save(model.state_dict(),'ResNet18_'+ model_version + '_Dataset.pt')
+      torch.save(model.state_dict(), output_dir + 'ResNet18_'+ model_version + '_Dataset.pt')
       loss_values['best_epoch_other'] = epoch
   elif 'Final' in model_version:
-    torch.save(model.state_dict(),'ResNet18_' + model_version + '_' + str(configs['num_epochs']) + 'E_Dataset.pt')
+    torch.save(model.state_dict(), output_dir + 'ResNet18_' + model_version + '_' + str(configs['num_epochs']) + 'E_Dataset.pt')
+  elif 'Always' in model_version:
+    torch.save(model.state_dict(), output_dir + 'ResNet18_' + epoch + 'E_Dataset.pt')
   else:
     print('model ' + model_version + ' unknown!')
 
@@ -218,13 +228,49 @@ def create_dirs(dir_one, dir_two, dir_three):
 
   top_directory = dir_one.split('/')[0]
 
-  print('thesis/' + top_directory)
+  print(top_directory)
 
-  if not os.path.exists('thesis/' + top_directory):
-    os.makedirs('thesis/' + top_directory)
-  if not os.path.exists('thesis/' + dir_one):
-    os.makedirs('thesis/' + dir_one)
-  if not os.path.exists('thesis/' + dir_two):
-    os.makedirs('thesis/' + dir_two)
-  if not os.path.exists('thesis/' + dir_three):
-    os.makedirs('thesis/' + dir_three)
+  if not os.path.exists(top_directory):
+    os.makedirs(top_directory)
+  if not os.path.exists(dir_one):
+    os.makedirs(dir_one)
+  if not os.path.exists(dir_two):
+    os.makedirs(dir_two)
+  if not os.path.exists(dir_three):
+    os.makedirs(dir_three)
+
+def plot_data_and_save_to_png(file_name):
+    # Lese den gesamten Inhalt der Datei ein
+    with open(file_name, 'r') as file:
+        data_text = file.read()
+
+    # Verwende reguläre Ausdrücke, um die relevanten Daten zu extrahieren
+    pattern = r'Epoch \[(\d+) / \d+\] average reconstruction error: ([\d.]+)   validation error one: ([\d.]+)   validation error two: ([\d.]+)'
+    matches = re.findall(pattern, data_text)
+
+    # Erstelle eine Liste der extrahierten Daten
+    data_list = [(int(match[0]), float(match[1]), float(match[2]), float(match[3])) for match in matches]
+
+    # Erstelle ein DataFrame aus den extrahierten Daten
+    df = pd.DataFrame(data_list, columns=['Epoch', 'Reconstruction Error', 'Validation Error One', 'Validation Error Two'])
+
+    # Erstelle das Plot
+    plt.figure(figsize=(10, 6))
+    plt.plot(df['Epoch'], df['Reconstruction Error'], label='Reconstruction Error', marker='o')
+    plt.plot(df['Epoch'], df['Validation Error One'], label='Validation Error One', marker='o')
+    plt.plot(df['Epoch'], df['Validation Error Two'], label='Validation Error Two', marker='o')
+
+    # Beschriftungen und Legende hinzufügen
+    plt.xlabel('Epoch')
+    plt.ylabel('Error')
+    plt.title('Error vs. Epoch')
+    plt.legend()
+
+    # Bestimme den Ausgabepfad für die PNG-Datei im gleichen Ordner wie die Eingabedatei
+    output_dir = os.path.dirname(file_name)
+    output_file_name = os.path.join(output_dir, os.path.splitext(os.path.basename(file_name))[0] + '.png')
+    
+    # Speichere das Plot in der PNG-Datei
+    plt.grid(True)
+    plt.savefig(output_file_name)
+    plt.close()

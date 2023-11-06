@@ -8,11 +8,11 @@ zsize: 64
 
 use_gpu: True
 
-TRAIN_SET: 'sets/Large_No_Traficlights.csv'
-VAL_SET: 'sets/Small_No_Traficlights.csv'
-VAL_SET_TWO: 'sets/7_No_Traficlights.csv'
+TRAIN_SET: '../data/sets/train.csv'
+VAL_SET: '../data/sets/val.csv'
+VAL_SET_TWO: '../data/sets/test.csv'
 
-log_file: 'terminal_output_wandb.txt'
+log_file: 'DEPTH_terminal_output_wandb.txt'
 
 Name: 'DEPTH_WANDB'
 

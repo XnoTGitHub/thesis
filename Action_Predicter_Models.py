@@ -9,7 +9,7 @@ class Action_Predicter_Dense(nn.Module):
         self.d1 = nn.Linear(64, 128)
         self.d2 = nn.Linear(128, 64)
         self.d3 = nn.Linear(64, 16)
-        self.d4 = nn.Linear(16, 2)
+        self.d4 = nn.Linear(16, 1)
 
     def forward(self, x):
         #print('Dense: ', x.shape)
@@ -45,7 +45,7 @@ class Action_Predicter_LSTM(nn.Module):
         self.d3 = nn.Linear(self.zsize * 3+(16-self.zsize), self.zsize)
         self.d4 = nn.Linear(self.zsize * 4+(16-self.zsize), self.zsize)
         self.d5 = nn.Linear(self.zsize, 16)
-        self.d6 = nn.Linear(16, 2)
+        self.d6 = nn.Linear(16, 1)
 
 
     def forward(self, x):

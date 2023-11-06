@@ -185,6 +185,7 @@ class Var_Encoder(nn.Module):
         super (Var_Encoder, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
+        self.conv1.weight.data.normal_(-0.001, 0.001)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)#, return_indices = True)
@@ -224,27 +225,30 @@ class Var_Encoder(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        #print('encoder start')
+        assert (x >= 0).all() and (x <= 1).all() and not torch.isnan(x).any(), "encoder start x images has values out of range!"
+
         x = self.conv1(x)
-        #print(x.shape)
-        x = self.bn1(x)
-        #print(x.shape)
+
         x = self.relu(x)
-        #print(x.shape)
+        x = self.bn1(x)
+
+        x = self.relu(x)
+
         x = self.maxpool(x)
-        #print('maxpool: ',x.shape)
         x = self.layer1(x)
-        #print(x.shape)
+
+        x = torch.sigmoid(x) #maybe change all the sigmoids to relu
         x = self.layer2(x)
-        #print(x.shape)
+        x = torch.sigmoid(x)
         x = self.layer3(x)
-        #print(x.shape)
+        x = torch.sigmoid(x)
         x = self.layer4(x)
-        #print(x.shape)
+        x = torch.sigmoid(x)
 
         x = self.avgpool(x)
         #print('avgpool: ',x.shape)
         x = x.view(x.size(0), -1)
+        assert (x >= -1).all() and (x <= 1).all() and not torch.isnan(x).any(), "encoder x images has values out of range!"
         #print(x.shape)
         x_mu = self.fc_mu(x)
         x_logvar = self.fc_logvar(x)
@@ -353,61 +357,28 @@ class Decoder(nn.Module):
     self.dconv1 = nn.ConvTranspose2d(64, 3, 10, stride = 4, padding = 3)
 
   def forward(self,x):
-    #print(torch.max(x))
-    print('decoder start')
-    print(torch.max(x))
-    print(np.count_nonzero(np.isnan(self.dfc3.weight.data.cpu().detach().numpy())),np.count_nonzero(np.isnan(self.dfc3.bias.data.cpu().detach().numpy())))
-    print('in decoder: ', np.count_nonzero(np.isnan(x.cpu().detach().numpy())))
+
+    x = torch.sigmoid(x)
     x = self.dfc3(x)
     print(x)
     print(x.shape)
     x = F.relu(x)
-    print('in decoder: ', np.count_nonzero(np.isnan(x.cpu().detach().numpy())))
-    #x = F.relu(self.bn3(x))
-    #print(x.shape)
-    #x = self.dfc2(x)
-    #print(x.shape)
-    #x = F.relu(self.bn2(x))
-    #print(x.shape)
-    ##x = F.relu(x)
-    #x = self.dfc1(x)
-    #print(x.shape)
-    #x = F.relu(self.bn1(x))
-    #print('vor view: ', x.shape)
-    #x = F.relu(x)
-    #print(x.size())
+    #assert (x >= 0).all() and (x <= 1).all(), "decoder x has values out of range!"
     x = x.view(-1,256,6,20)
-    #print(x.shape)
-    #print (x.size())
     x=self.upsample1(x)
-    #print('nach dem upsamplen: ',x.shape)
-    #print x.size()
     x = self.dconv5(x)
-    #print(x.shape)
-    #print x.size()
     x = F.relu(x)
-    #print x.size()
     x = F.relu(self.dconv4(x))
-    #print(x.shape)
-    #print x.size()
     x = F.relu(self.dconv3(x))
-    #print(x.shape)
-    #print x.size()     
-    x=self.upsample1(x)
-    #print('upsampling2: ',x.shape)
-    #print x.size()     
-    x = self.dconv2(x)
-    #print(x.shape)
-    #print x.size()     
+    #assert (x >= 0).all() and (x <= 1).all(), "decoder conv3 has values out of range!"
+    x=self.upsample1(x)  
+    x = self.dconv2(x)    
     x = F.relu(x)
     x=self.upsample1(x)
-    #print('upsampling3: ',x.shape)
-    #print x.size()
     x = self.dconv1(x)
-    #print(x.shape)
-    #print x.size()
     x = F.sigmoid(x)
     print('x:',torch.max(x))
+    assert (x >= 0).all() and (x <= 1).all(), "decoder end x has values out of range!"
     return x
 
 ##########################################
@@ -468,12 +439,15 @@ class Var_Autoencoder(nn.Module):
   def forward(self,x):
 
     latent_mu, latent_logvar = self.encoder(x)
+    #assert (latent_mu >= 0).all() and (latent_mu <= 1).all() and not torch.isnan(latent_mu).any(), "vor decoder latent_mu has values out of range!"
+    #assert (latent_logvar >= 0).all() and (latent_logvar <= 1).all() and not torch.isnan(latent_logvar).any(), "vor decoder latent_logvar has values out of range!"
     print(latent_mu)
     print(latent_logvar)
 
     #latent = self.latent_sample(latent_mu, latent_logvar)
     latent = self.reparameterize(latent_mu,latent_logvar)
     print('latent.shape: ',latent.shape)
+    #assert (latent >= 0).all() and (latent <= 1).all() and not torch.isnan(latent).any(), "vor decoder has values out of range!"
     x_recon = self.decoder(latent)
 
     return x_recon, latent_mu, latent_logvar
@@ -503,34 +477,6 @@ class Var_Autoencoder(nn.Module):
       print('validation')
       return mu
 
-def vae_loss(recon_x, x, mu, logvar,variational_beta):
-    # recon_x is the probability of a multivariate Bernoulli distribution p.
-    # -log(p(x)) is then the pixel-wise binary cross-entropy.
-    # Averaging or not averaging the binary cross-entropy over all pixels here
-    # is a subtle detail with big effect on training, since it changes the weight
-    # we need to pick for the other loss term by several orders of magnitude.
-    # Not averaging is the direct implementation of the negative log likelihood,
-    # but averaging makes the weight of the other loss term independent of the image resolution.
-    #recon_loss = F.binary_cross_entropy(recon_x.view(-1, 3*40960), x.view(-1, 3*40960), reduction='sum')
-    #print(recon_x.shape)
-    print(torch.max(recon_x))
-    print(torch.max(x))
-    print(np.count_nonzero(np.isnan(mu.cpu().detach().numpy())))
-    print(np.count_nonzero(np.isnan(logvar.cpu().detach().numpy())))
-    print(np.count_nonzero(np.isnan(recon_x.cpu().detach().numpy())))
-
-    #recon_loss = F.mse_loss(recon_x,x)
-    recon_loss = F.binary_cross_entropy(recon_x.reshape(-1, 3*192*640), x.reshape(-1, 3*192*640), reduction='sum')
-    
-    # KL-divergence between the prior distribution over latent vectors
-    # (the one we are going to sample from when generating new images)
-    # and the distribution estimated by the generator for the given image.
-    print('recon_loss: ', recon_loss)
-    #kldivergence = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-    kld_loss = torch.mean(-0.5 * torch.sum(1 + logvar - mu ** 2 - logvar.exp(), dim = 1), dim = 0)
-    print('kldivergence: ', kld_loss)
-    
-    return recon_loss + variational_beta * kld_loss
 
 ##########################################
 class Double_Var_Autoencoder(nn.Module):
@@ -588,12 +534,11 @@ def vae_loss(recon_x, x, mu, logvar,variational_beta):
     # Not averaging is the direct implementation of the negative log likelihood,
     # but averaging makes the weight of the other loss term independent of the image resolution.
     #recon_loss = F.binary_cross_entropy(recon_x.view(-1, 3*40960), x.view(-1, 3*40960), reduction='sum')
-    #print(recon_x.shape)
-    print(torch.max(recon_x))
-    print(torch.max(x))
-    print(np.count_nonzero(np.isnan(mu.cpu().detach().numpy())))
-    print(np.count_nonzero(np.isnan(logvar.cpu().detach().numpy())))
-    print(np.count_nonzero(np.isnan(recon_x.cpu().detach().numpy())))
+    print("recon_x.shape: ", recon_x[0][0][0])
+    print("x.shape: ", x[0][0][0])
+
+    assert (x >= 0).all() and (x <= 1).all() and not torch.isnan(x).any(), "x has values out of range or NaN values!"
+    assert (recon_x >= 0).all() and (recon_x <= 1).all() and not torch.isnan(recon_x).any(), "recon_x has values out of range or NaN values!"
 
     #recon_loss = F.mse_loss(recon_x,x)
     recon_loss = F.binary_cross_entropy(recon_x.reshape(-1, 3*192*640), x.reshape(-1, 3*192*640), reduction='sum')

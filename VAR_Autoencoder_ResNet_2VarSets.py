@@ -48,9 +48,9 @@ def notifyTrainFinish(name):
 ###################
 #### DataLoader ####
 
-dataset_train = CarlaDataset(TRAIN_SET, 'pred_depth/', 'opt_flow/')
-dataset_val = CarlaDataset(VAL_SET, 'pred_depth/', 'opt_flow/')
-dataset_val_two = CarlaDataset(VAL_SET_TWO, 'pred_depth/', 'opt_flow/')
+dataset_train = CarlaDataset(TRAIN_SET, 'pred_depth/', 'ofl/')
+dataset_val = CarlaDataset(VAL_SET, 'pred_depth/', 'ofl/')
+dataset_val_two = CarlaDataset(VAL_SET_TWO, 'pred_depth/', 'ofl/')
 
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader

@@ -73,35 +73,38 @@ if (TRAIN):
       ### First Validation ###
 
       loss_values['val_loss_avg'][-1] = validate(valid_dataloader, autoencoder, optimizer, device)
-      store_model('Same_' + configs['Name'],autoencoder, loss_values, configs, epoch)
+      store_model('Same_' + configs['Name'],autoencoder, loss_values, configs, epoch,configs['output_dir'])
 
       ### Second Validation ###
 
       loss_values['val_loss_avg_two'][-1] = validate(valid_dataloader_two, autoencoder, optimizer, device)
-      store_model('Other_' + configs['Name'],autoencoder, loss_values, configs, epoch)
+      store_model('Other_' + configs['Name'],autoencoder, loss_values, configs, epoch,configs['output_dir'])
 
       log_epoch(configs, loss_values['train_loss_avg'][-1], loss_values['val_loss_avg'][-1], loss_values['val_loss_avg_two'][-1], epoch)
-      store_model('Final_'+ configs['Name'], autoencoder, loss_values, configs, epoch)
+      store_model('Final_'+ configs['Name'], autoencoder, loss_values, configs, epoch,configs['output_dir'])
+      store_model('Always', autoencoder, loss_values, configs, epoch,configs['output_dir'])
   notifyTrainFinish('Direct_Network')
 else:
   #if configs['Name'] == 'VAR':
-  autoencoder.load_state_dict(torch.load('ResNet18_Final_' + configs['Name'] + '_' + str(configs['num_epochs']) + 'E_Dataset.pt'))
+  autoencoder.load_state_dict(torch.load(configs['output_dir'] + 'ResNet18_Final_' + configs['Name'] + '_' + str(configs['num_epochs']) + 'E_Dataset.pt'))
   #else:
   #  autoencoder.load_state_dict(torch.load('ResNet18_Final_' + configs['Name'] + 'E_Dataset.pt'))
 
 if(TRAIN):
   log_best(configs, loss_values['best_epoch_same'], loss_values['best_epoch_other'])
+  plot_data_and_save_to_png(configs['log_file'])
+
 
 ### Visualize output ###
+if not 'DIRECT' in configs['Name']:
+  create_dirs(configs['output_dir'] + 'out/autoencoder_output_final',configs['output_dir'] + 'out/autoencoder_output_same',configs['output_dir'] + 'out/autoencoder_output_other')
 
-create_dirs('out/autoencoder_output_final','out/autoencoder_output_same','out/autoencoder_output_other')
-
-create_output_images('thesis/out/autoencoder_output_final', autoencoder, valid_dataloader, device, configs)
-# Dataset Same
-autoencoder.load_state_dict(torch.load('ResNet18_Same_' + configs['Name'] + '_Dataset.pt'))
-create_output_images('thesis/out/autoencoder_output_same', autoencoder, valid_dataloader, device, configs)
-# Dataset Same
-autoencoder.load_state_dict(torch.load('ResNet18_Other_'+ configs['Name'] + '_Dataset.pt'))
-create_output_images('thesis/out/autoencoder_output_other', autoencoder, valid_dataloader, device, configs)
+  create_output_images(configs['output_dir'] + 'out/autoencoder_output_final', autoencoder, valid_dataloader, device, configs)
+  # Dataset Same
+  autoencoder.load_state_dict(torch.load(configs['output_dir'] + 'ResNet18_Same_' + configs['Name'] + '_Dataset.pt'))
+  create_output_images(configs['output_dir'] + 'out/autoencoder_output_same', autoencoder, valid_dataloader, device, configs)
+  # Dataset Other
+  autoencoder.load_state_dict(torch.load(configs['output_dir'] + 'ResNet18_Other_'+ configs['Name'] + '_Dataset.pt'))
+  create_output_images(configs['output_dir'] + 'out/autoencoder_output_other', autoencoder, valid_dataloader, device, configs)
 
 print('finish')

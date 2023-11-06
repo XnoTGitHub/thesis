@@ -1,5 +1,5 @@
 latent_dims: 64
-num_epochs: 50
+num_epochs: 60
 batch_size: 64
 capacity: 64
 learning_rate: 1e-5
@@ -8,12 +8,13 @@ zsize: 64
 
 use_gpu: True
 
-TRAIN_SET: 'sets/Large_No_Traficlights.csv'
-VAL_SET: 'sets/Small_No_Traficlights.csv'
-VAL_SET_TWO: 'sets/7_No_Traficlights.csv'
+TRAIN_SET: '../data/sets/train.csv'
+VAL_SET: '../data/sets/val.csv'
+VAL_SET_TWO: '../data/sets/test.csv'
+
 
 log_file: 'terminal_output_var.txt'
 
 Name: 'VAR'
 
-TRAIN: False
+TRAIN: True

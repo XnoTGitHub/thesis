@@ -27,6 +27,10 @@ def log_header(configs, model):
       myfile.write(str(summary(model,(1,192,640))))
     elif configs['Name'] == 'RGB':
       myfile.write(str(summary(model,(3,192,640))))
+    elif 'DIRECT_rgb' in configs['Name']:
+      myfile.write(str(summary(model,(3,192,640))))
+    elif 'DIRECT' in configs['Name']:
+      myfile.write(str(summary(model,(1,192,640))))
     myfile.write('\n')
     myfile.write('Train...\n')
 

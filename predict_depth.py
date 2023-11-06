@@ -20,7 +20,7 @@ import numpy as np
 from PIL import Image
 from PIL import ImageOps
 from tqdm import tqdm
-import IPython
+#import IPython
 
 ####TELEGRAM####
 import requests
@@ -80,33 +80,38 @@ for m in model_depth.values():
 
 PROCESS = True
 
-PATH_TO_DATA = 'out/'
+DIRS = ['val/','test/','train/']
+for dir in DIRS:
 
-if PROCESS:
+  PATH_TO_DATA = './../data1-7.2/params1-7/' + dir
+  
+  if PROCESS:
 
-  for town in os.listdir(PATH_TO_DATA):
+    for town in os.listdir(PATH_TO_DATA):
+      print(PATH_TO_DATA)
+      print(os.listdir(PATH_TO_DATA))
 
-    PATH_TO_RGB = PATH_TO_DATA + town + '/rgb/'
-    PATH_TO_DEPTH = PATH_TO_DATA + town + '/pred_depth/'
+      PATH_TO_RGB = PATH_TO_DATA + town + '/rgb/'
+      PATH_TO_DEPTH = PATH_TO_DATA + town + '/pred_depth/'
 
-    if not os.path.isdir(PATH_TO_DEPTH):
-      os.mkdir(PATH_TO_DEPTH)
-    else:
-      print(PATH_TO_DATA + town, ' already exists!')
-      continue
+      if not os.path.isdir(PATH_TO_DEPTH):
+        os.mkdir(PATH_TO_DEPTH)
+      else:
+        print(PATH_TO_DATA + town, ' already exists!')
+        continue
 
-    max = 0
-    print(PATH_TO_DEPTH)
-    for view_dir in os.listdir(PATH_TO_RGB):
-      if not os.path.isdir(PATH_TO_DEPTH  + view_dir + '/'):
-        os.mkdir(PATH_TO_DEPTH  + view_dir + '/')
+      max = 0
+      print(PATH_TO_DEPTH)
+      #for view_dir in os.listdir(PATH_TO_RGB):
+      #  if not os.path.isdir(PATH_TO_DEPTH  + view_dir + '/'):
+      #    os.mkdir(PATH_TO_DEPTH  + view_dir + '/')
       count = 0
-      for filename in os.listdir(PATH_TO_RGB + view_dir + '/'):
+      for filename in os.listdir(PATH_TO_RGB):
         if filename[-4:] in '.png.jpg':
           print(count, filename)
           count +=1
-          Path_to_rgb_image = PATH_TO_RGB + view_dir + '/' + filename
-          Path_to_seg_image = PATH_TO_DEPTH + view_dir + '/' + filename
+          Path_to_rgb_image = PATH_TO_RGB  + filename
+          Path_to_seg_image = PATH_TO_DEPTH + filename
           print(Path_to_seg_image)
           original_im = Image.open(Path_to_rgb_image)
           original_im = original_im.resize((640,192), Image.ANTIALIAS)
@@ -142,7 +147,7 @@ if PROCESS:
           
         elif filename[-4:] in '.csv':
 
-          copy(PATH_TO_RGB + view_dir + '/' + filename, PATH_TO_DEPTH + view_dir + '/' + filename)
+          copy(PATH_TO_RGB + filename, PATH_TO_DEPTH + filename)
 
           #df = pd.read_csv(PATH_TO_RGB + dataset +  '/' + view_dir + '/' + filename).values.tolist()
           #print(df)
@@ -150,6 +155,6 @@ if PROCESS:
           #print(df)
         else:
           print('filetype not known:',filename)
-    print(max)  
-    print('finish')
-    tg_sendMessage("Segmentation Set Done: " + PATH_TO_DEPTH)
+      print(max)  
+      print('finish')
+      tg_sendMessage("Segmentation Set Done: " + PATH_TO_DEPTH)

@@ -1,6 +1,6 @@
 latent_dims: 64
 num_epochs: 50
-batch_size: 64
+batch_size: 16
 capacity: 64
 learning_rate: 1e-3
 weight_decay: 1e-5
@@ -8,14 +8,16 @@ zsize: 64
 
 use_gpu: True
 
-TRAIN_SET: 'sets/Large_No_Traficlights.csv'
-VAL_SET: 'sets/Small_No_Traficlights.csv'
-VAL_SET_TWO: 'sets/7_No_Traficlights.csv'
+TRAIN_SET: '../data1-7/sets/train.csv'
+VAL_SET: '../data1-7/sets/val.csv'
+VAL_SET_TWO: '../data1-7/sets/test.csv'
 
-log_file: 'terminal_output_direct.txt'
+log_file: 'terminal_output_direct_data1-7.txt'
 
-Name: 'DIRECT'
+Name: 'DIRECT_data1-7'
 
 TRAIN: True
 
 is_depth: True
+
+output_dir: 'data1-7/'
